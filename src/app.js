@@ -1,8 +1,14 @@
 import cors from 'cors'
+import dotenv from 'dotenv'
 import express from 'express'
+import mongoose from 'mongoose'
+
 import { giftcardsRoutes } from './routes/giftcards.routes.js'
 
-const EXPRESS_PORT = 5000
+dotenv.config()
+
+const EXPRESS_PORT = process.env.EXPRESS_PORT || 5000
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
 
 // Inicializamos la app de Express
 const app = express()
@@ -27,6 +33,11 @@ app.all('*', (req, res) => {
 })
 
 // Finalmente ponemos a "escuchar" nuestro servidor en un puerto específico
-app.listen(EXPRESS_PORT, () => {
-    console.log(`Backend inicializado puerto ${EXPRESS_PORT}`)
+app.listen(EXPRESS_PORT, async () => {
+    try {
+        await mongoose.connect(MONGODB_URI)
+        console.log(`Backend inicializado puerto ${EXPRESS_PORT}`)
+    } catch (err) {
+        console.error(err.message)
+    }
 })
