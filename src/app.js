@@ -4,9 +4,15 @@ import express from 'express'
 import mongoose from 'mongoose'
 
 import { giftcardsRoutes } from './routes/giftcards.routes.js'
+import { usersRoutes } from './routes/users.routes.js'
 
+// Dotenv nos permite utilizar variables de entorno, las cuales mejoran
+// la organización de nuestra app. config() es el método encargado de recuperar
+// esas variables desde un archivo de configuración y cargarlas al process.env.
+// Por defecto el archivo se debe llamar .env y ubicarse en la ruta raíz del proyecto.
 dotenv.config()
 
+// Inicializamos constantes con los valores de variables de entorno
 const EXPRESS_PORT = process.env.EXPRESS_PORT || 5000
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
 
@@ -24,6 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 // Insertamos las rutas de endpoints que nos interesa habilitar
 // En lugar de declarar los endpoints acá, lo hacemos en un archivo de rutas por separado
 app.use('/api/giftcards', giftcardsRoutes());
+app.use('/api/users', usersRoutes());
 
 
 // Habilitamos una ruta "catchall" para retornar un contenido amigable cuando se intenta
@@ -35,6 +42,7 @@ app.all('*', (req, res) => {
 // Finalmente ponemos a "escuchar" nuestro servidor en un puerto específico
 app.listen(EXPRESS_PORT, async () => {
     try {
+        // Conectamos al motor de base de datos MongoDB
         await mongoose.connect(MONGODB_URI)
         console.log(`Backend inicializado puerto ${EXPRESS_PORT}`)
     } catch (err) {
