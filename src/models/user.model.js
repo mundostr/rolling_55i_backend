@@ -3,6 +3,7 @@
 // (Ver archivo de rutas en routes)
 
 import mongoose from 'mongoose'
+import mongoosePaginate from 'mongoose-paginate-v2'
 
 mongoose.pluralize(null)
 
@@ -12,8 +13,11 @@ const schema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true },
     password: { type: String, required: true },
+    avatar: { type: String },
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
     cart: { type: Array, required: true, default: [] }
 })
+schema.plugin(mongoosePaginate)
 
 const userModel = mongoose.model(collection, schema)
 
