@@ -30,6 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Insertamos las rutas de endpoints que nos interesa habilitar
 // En lugar de declarar los endpoints acá, lo hacemos en un archivo de rutas por separado
+// Podemos asignar a cada grupo un prefijo para más orden
 app.use('/api/giftcards', giftcardsRoutes());
 app.use('/api/users', usersRoutes());
 
