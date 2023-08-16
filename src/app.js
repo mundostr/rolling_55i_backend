@@ -20,6 +20,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
 const app = express()
 
 // Habilitamos el uso de cors (https://reflectoring.io/complete-guide-to-cors/)
+// Esto es IMPORTANTE para controlar qué solicitudes se atienden
 app.use(express.json());
 app.use(cors({
     origin: '*' // Se aceptan solicitudes desde cualquier origen
