@@ -2,6 +2,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
 import mongoose from 'mongoose'
+import bodyParser from 'body-parser'
 
 import { giftcardsRoutes } from './routes/giftcards.routes.js'
 import { usersRoutes } from './routes/users.routes.js'
@@ -13,7 +14,7 @@ import { usersRoutes } from './routes/users.routes.js'
 dotenv.config()
 
 // Inicializamos constantes con los valores de variables de entorno
-const EXPRESS_PORT = process.env.EXPRESS_PORT || 5000
+const EXPRESS_PORT = process.env.EXPRESS_PORT || 3000
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
 
 // Inicializamos la app de Express
@@ -22,6 +23,10 @@ const app = express()
 // Habilitamos el uso de cors (https://reflectoring.io/complete-guide-to-cors/)
 // Esto es IMPORTANTE para controlar qué solicitudes se atienden
 app.use(express.json());
+// Habilitamos también bodyParser, este middleware nos va a permitir interpretar
+// correctamente los body de solicitud que pueden llegar en distintos formatos
+// como json, url-encoded o multipart form data.
+app.use(bodyParser.json());
 app.use(cors({
     origin: '*' // Se aceptan solicitudes desde cualquier origen
 }));

@@ -16,6 +16,8 @@ $ npm i nodemon --save-dev
 EXPRESS_PORT=5000
 MONGODB_URI=mongodb://localhost:27017/rolling55i
 REQ_LIMIT=50
+TOKEN_SECRET=rolling55i
+TOKEN_EXPIRATION=1h
 ```
 
 ### Ejecución para desarrollo

@@ -3,6 +3,10 @@ import { Router } from 'express'
 // Importamos el modelo para poder invocar a través de él los distintos métodos de consulta
 import userModel from '../models/user.model.js'
 
+import { body, validationResult } from 'express-validator';
+import { createHash, isValidPassword } from '../utils.js';
+import jwt from 'jsonwebtoken';
+
 // Exportamos usersRoutes habilitando endpoints para las distintas operaciones deseadas
 export const usersRoutes = ()  => {
     const router = Router()
@@ -21,6 +25,53 @@ export const usersRoutes = ()  => {
             
             next()
         }
+    }
+
+    const checkRegistered = async (req, res, next) => {
+        const userAlreadyRegistered = await userModel.findOne({ email: req.body.email })
+        
+        if (userAlreadyRegistered === null) {
+            next()
+        } else {
+            res.status(400).send({ status: 'ERR', data: 'El email ya se encuentra registrado' })
+        }
+    }
+
+    const checkReadyLogin = async (req, res, next) => {
+        // res.local es un elemento ya disponible en el objeto res de Express
+        // foundUser es un elemento nuevo de res.local que agregamos de nuestro lado
+        // para almacenar el usuario recuperado y poder usarlo luego en el endpoint
+        res.locals.foundUser = await userModel.findOne({ email: req.body.email })
+        
+        if (res.locals.foundUser !== null) {
+            // Si se encuentra un registro con ese mail, se continúa la cadena del endpoint
+            next()
+        } else {
+            // caso contrario se devuelve un error
+            res.status(400).send({ status: 'ERR', data: 'El email no se encuentra registrado' })
+        }
+    }
+
+    // Utilizamos la sintaxis de express-validator para controlar distintos aspectos de los elementos del body
+    // Inyectaremos este middleware en el endpoint de registro de usuario
+    const validateCreateFields = [
+        body('name').isLength({ min: 2, max: 32 }).withMessage('El nombre debe tener entre 2 y 32 caracteres'),
+        body('email').isEmail().withMessage('El formato de mail no es válido'),
+        body('password').isLength({ min: 6, max: 12 }).withMessage('La clave debe tener entre 6 y 12 caracteres')
+    ]
+
+    // Utilizamos la sintaxis de express-validator para controlar distintos aspectos de los elementos del body
+    // Inyectaremos este middleware en el endpoint de login de usuario
+    const validateLoginFields = [
+        body('email').isEmail().withMessage('El formato de mail no es válido'),
+        body('password').isLength({ min: 6, max: 12 }).withMessage('La clave debe tener entre 6 y 12 caracteres')
+    ]
+
+    // Un simple helper que quita campos de un objeto en base a un array de no deseados
+    const filterData = (data, unwantedFields) => {
+        const { ...filteredData } = data
+        unwantedFields.forEach(field => delete filteredData[field] )
+        return filteredData
     }
 
     // Este endpoint queda solo como referencia
@@ -43,7 +94,8 @@ export const usersRoutes = ()  => {
             // El método paginate() está disponible gracias al uso del módulo mongoose-paginate-v2
             // (ver user.mode.js para su habilitación). Mínimamente utilizaremos un offset y un limit
             // para indicar desde dónde comenzar a recuperar registros y cuántos
-            const users = await userModel.paginate({}, { offset: 0, limit: process.env.REQ_LIMIT || 50 })
+            // Podemos pasar un offset, por ej /api/users/paginated?offset=15
+            const users = await userModel.paginate({}, { offset: req.query.offset || 0, limit: process.env.REQ_LIMIT || 50 })
             
             res.status(200).send({ status: 'OK', data: users })
         } catch (err) {
@@ -75,31 +127,82 @@ export const usersRoutes = ()  => {
         }
     })
 
-    // Observar como estamos "inyectando" el middleware checkRequired que hemos definido más arriba
+    router.get('/protected', async (req, res) => {
+        // Este endpoint verifica que se envíe un token en la solicitud
+        const headerToken = req.headers.authorization
+        
+        // Si no hay token se devuelve directamente un error 401
+        if (!headerToken) return res.status(401).send({ status: 'ERR', data: 'Se requiere un token válido' })
+        const token = headerToken.replace('Bearer ', '')
+        
+        // Si hay token se verifica
+        jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+            if (err) {
+                if (err.name === 'TokenExpiredError') {
+                    return res.status(401).send({ status: 'ERR', data: 'El token ha expirado' });
+                } else {
+                    return res.status(401).send({ status: 'ERR', data: 'El token no es válido' });
+                }
+            }
+            
+            // En caso de llegar acá, significa que el token es válido
+            // const userId = decoded.userId;
+            res.status(200).send({ status: 'OK', data: 'El token es válido. Se muestran los datos protegidos' })
+        });
+    })
+
+    // Observar como estamos "inyectando" los middleware definidos arriba
     // De esta forma, al recibirse una solicitud en este endpoint, se ejecutará primero el "eslabón"
-    // checkRequired y si todo está ok, se continuará luego con el contenido de la función del endpoint
-    // Para este ejemplo el middleware nos permite verificar que el body recibido contenga los elementos
-    // name, email y password, y que éstos no estén vacíos
-    router.post('/', checkRequired(['name', 'email', 'password']), async (req, res) => {
-        try {
-            // req es un parámetro inyectado por Express que contiene toda la información
-            // relacionada a la solicitud (request)
-            // res por su lado contiene todo lo relativo a la respuesta (response)
-            
-            // req.body permite acceder a los datos de usuario que se desea cargar, por supuesto
-            // al "armar" el body del otro lado (en un formulario, postman, thunderclient, etc),
-            // se deben especificar esos campos (name, email, password en este ejemplo)
-            // por supuesto aquí falta un paso FUNDAMENTAL, que es la verificación de los datos
-            const { name, email, password } = req.body
-            
-            // Nos falta aquí un detalle importante que agregaremos pronto: hashear la clave
-            const newUser = { name: name, email: email, password: password }
-            // Una vez organizado el nuevo usuario, invocamos el método create() para enviarlo a la base de datos
-            const process = await userModel.create(newUser)
-            
-            res.status(200).send({ status: 'OK', data: process })
-        } catch (err) {
-            res.status(500).send({ status: 'ERR', data: err.message })
+    // checkRequired, si todo está ok se continuará con validateCreateFields y luego checkRegistered.
+    // En caso de algún problema en uno de los eslabones, la cadena se "cortará" ahí directamente,
+    // devolviéndose el error que se indique en el propio middleware
+    router.post('/', checkRequired(['name', 'email', 'password']), validateCreateFields, checkRegistered, async (req, res) => {
+        // Ante todo chequeamos el validationResult del express-validator
+        if (validationResult(req).isEmpty()) {
+            try {
+                // req es un parámetro inyectado por Express que contiene toda la información
+                // relacionada a la solicitud (request)
+                // res por su lado contiene todo lo relativo a la respuesta (response)
+                
+                // req.body permite acceder a los datos de usuario que se desea cargar, por supuesto
+                // al "armar" el body del otro lado (en un formulario, postman, thunderclient, etc),
+                // se deben especificar esos campos (name, email, password en este ejemplo)
+                // por supuesto aquí falta un paso FUNDAMENTAL, que es la verificación de los datos
+                const { name, email, password } = req.body
+                
+                // Aquí agregamos el hasheo de clave, ya que nunca debemos almacenar una clave "plana"
+                const newUser = { name: name, email: email, password: createHash(password) }
+                // Una vez organizado el nuevo usuario, invocamos el método create() para enviarlo a la base de datos
+                const process = await userModel.create(newUser)
+                
+                res.status(200).send({ status: 'OK', data: process })
+            } catch (err) {
+                res.status(500).send({ status: 'ERR', data: err.message })
+            }
+        } else {
+            res.status(400).send({ status: 'ERR', data: validationResult(req).array() })
+        }
+    })
+
+    router.post('/login', checkRequired(['email', 'password']), validateLoginFields, checkReadyLogin, async (req, res) => {
+        // Ante todo chequeamos el validationResult del express-validator
+        if (validationResult(req).isEmpty()) {
+            try {
+                const foundUser = res.locals.foundUser
+                
+                // Si la clave es válida, la autenticación es correcta
+                if (foundUser.email === req.body.email && isValidPassword(foundUser, req.body.password)) {
+                    // Generamos un nuevo token tipo JWT y lo agregamos a foundUser para que sea enviado en la respuesta
+                    foundUser._doc.token = jwt.sign({ userId: foundUser._id, name: foundUser.name }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRATION });
+                    res.status(200).send({ status: 'OK', data: filterData(foundUser._doc, ['password']) })
+                } else {
+                    res.status(401).send({ status: 'ERR', data: 'Credenciales no válidas' })
+                }
+            } catch (err) {
+                res.status(500).send({ status: 'ERR', data: err.message })
+            }
+        } else {
+            res.status(400).send({ status: 'ERR', data: validationResult(req).array() })
         }
     })
 
