@@ -3,9 +3,9 @@ import { Router } from 'express'
 // Importamos el modelo para poder invocar a través de él los distintos métodos de consulta
 import userModel from '../models/user.model.js'
 
-import { body, validationResult } from 'express-validator';
-import { createHash, isValidPassword } from '../utils.js';
-import jwt from 'jsonwebtoken';
+import { body, validationResult } from 'express-validator'
+import { createHash, isValidPassword } from '../utils.js'
+import jwt from 'jsonwebtoken'
 
 // Exportamos usersRoutes habilitando endpoints para las distintas operaciones deseadas
 export const usersRoutes = ()  => {
