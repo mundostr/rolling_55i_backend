@@ -27,18 +27,6 @@ export const usersRoutes = ()  => {
         }
     }
 
-    const checkAllowed = (allowedFields) => {
-        return (req, res, next) => {
-            req.filteredBody = {};
-            
-            for (const key in req.body) {
-                if (allowedFields.includes(key)) req.filteredBody[key] = req.body[key]
-            }
-            
-            next()
-        }
-    }
-
     const checkRegistered = async (req, res, next) => {
         const userAlreadyRegistered = await userModel.findOne({ email: req.body.email })
         
@@ -53,6 +41,7 @@ export const usersRoutes = ()  => {
         // res.local es un elemento ya disponible en el objeto res de Express
         // foundUser es un elemento nuevo de res.local que agregamos de nuestro lado
         // para almacenar el usuario recuperado y poder usarlo luego en el endpoint
+        // Otra práctica común es agregar los datos en un nuevo objeto req.user
         res.locals.foundUser = await userModel.findOne({ email: req.body.email })
         
         if (res.locals.foundUser !== null) {
@@ -62,6 +51,38 @@ export const usersRoutes = ()  => {
             // caso contrario se devuelve un error
             res.status(400).send({ status: 'ERR', data: 'El email no se encuentra registrado' })
         }
+    }
+
+    const checkRoles = (requiredRoles) => {
+        return (req, res, next) => {
+            if (!requiredRoles.includes(req.loggedInUser.role)) return res.status(403).send({ status: 'ERR', data: 'No tiene autorización para acceder a este recurso' })
+            
+            next()
+        }
+    }
+
+    // Este middleware verifica que se envíe un token en la solicitud y sea válido
+    const verifyToken = (req, res, next) => {
+        // Se obtiene el token desde los headers de la solicitud
+        const headerToken = req.headers.authorization
+
+        // Si no hay token se devuelve directamente un error 401
+        if (!headerToken) return res.status(401).send({ status: 'ERR', data: 'Se requiere un token válido' })
+        const token = headerToken.replace('Bearer ', '')
+
+        jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+            if (err) {
+                if (err.name === 'TokenExpiredError') {
+                    return res.status(401).send({ status: 'ERR', data: 'El token ha expirado' })
+                } else {
+                    return res.status(401).send({ status: 'ERR', data: 'El token no es válido' })
+                }
+            }
+            
+            // En caso de llegar acá, significa que el token es válido y todo está ok, se sigue la cadena
+            req.loggedInUser = decoded
+            next()
+        })
     }
 
     // Utilizamos la sintaxis de express-validator para controlar distintos aspectos de los elementos del body
@@ -79,11 +100,24 @@ export const usersRoutes = ()  => {
         body('password').isLength({ min: 6, max: 12 }).withMessage('La clave debe tener entre 6 y 12 caracteres')
     ]
 
-    // Un simple helper que quita campos de un objeto en base a un array de no deseados
+    // Quita campos de un objeto en base a un array de no deseados
     const filterData = (data, unwantedFields) => {
         const { ...filteredData } = data
         unwantedFields.forEach(field => delete filteredData[field] )
         return filteredData
+    }
+
+    // Quita campos del req.body en base a un array de permitidos
+    const filterAllowed = (allowedFields) => {
+        return (req, res, next) => {
+            req.filteredBody = {};
+            
+            for (const key in req.body) {
+                if (allowedFields.includes(key)) req.filteredBody[key] = req.body[key]
+            }
+            
+            next()
+        }
     }
 
     // Este endpoint queda solo como referencia
@@ -139,28 +173,17 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.get('/protected', async (req, res) => {
-        // Este endpoint verifica que se envíe un token en la solicitud
-        const headerToken = req.headers.authorization
-        
-        // Si no hay token se devuelve directamente un error 401
-        if (!headerToken) return res.status(401).send({ status: 'ERR', data: 'Se requiere un token válido' })
-        const token = headerToken.replace('Bearer ', '')
-        
-        // Si hay token se verifica
-        jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
-            if (err) {
-                if (err.name === 'TokenExpiredError') {
-                    return res.status(401).send({ status: 'ERR', data: 'El token ha expirado' });
-                } else {
-                    return res.status(401).send({ status: 'ERR', data: 'El token no es válido' });
-                }
-            }
-            
-            // En caso de llegar acá, significa que el token es válido
-            // const userId = decoded.userId;
-            res.status(200).send({ status: 'OK', data: 'El token es válido. Se muestran los datos protegidos' })
-        });
+    // Esta es una ruta protegida por token
+    // El middleware verifyToken chequeará que exista un token en la solicitud y sea válido
+    router.get('/protected', verifyToken, (req, res) => {
+        res.status(200).send({ status: 'OK', data: 'Se muestran los datos protegidos USER' })
+    })
+
+    // Esta es una ruta protegida por token y con rol de usuario
+    // El middleware verifyToken chequeará que exista un token en la solicitud y sea válido,
+    // luego checkRoles confirmará que el rol de usuario coincida con los permitidos
+    router.get('/protected_adm', verifyToken, checkRoles(['admin']), (req, res) => {
+        res.status(200).send({ status: 'OK', data: 'Se muestran los datos protegidos ADMIN' })
     })
 
     // Observar como estamos "inyectando" los middleware definidos arriba
@@ -205,7 +228,12 @@ export const usersRoutes = ()  => {
                 // Si la clave es válida, la autenticación es correcta
                 if (foundUser.email === req.body.email && isValidPassword(foundUser, req.body.password)) {
                     // Generamos un nuevo token tipo JWT y lo agregamos a foundUser para que sea enviado en la respuesta
-                    foundUser._doc.token = jwt.sign({ userId: foundUser._id, name: foundUser.name }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRATION });
+                    foundUser._doc.token = jwt.sign({
+                        userId: foundUser._id,
+                        name: foundUser.name,
+                        email: foundUser.email,
+                        role: foundUser.role
+                    }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRATION });
                     res.status(200).send({ status: 'OK', data: filterData(foundUser._doc, ['password']) })
                 } else {
                     res.status(401).send({ status: 'ERR', data: 'Credenciales no válidas' })
@@ -218,7 +246,7 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.put('/:uid', checkAllowed(['name', 'email', 'password', 'avatar', 'role', 'cart']), async (req, res) => {
+    router.put('/:uid', filterAllowed(['name', 'email', 'password', 'avatar', 'role', 'cart']), async (req, res) => {
         try {
             const id = req.params.uid
             if (mongoose.Types.ObjectId.isValid(id)) {
