@@ -214,9 +214,20 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.delete('/', async (req, res) => {
+    router.delete('/:uid', async (req, res) => {
         try {
-            res.status(200).send({ status: 'OK', data: 'Quiere hacer un DELETE' })
+            const id = req.params.uid
+            if (mongoose.Types.ObjectId.isValid(id)) {
+                const userToDelete = await userModel.findOneAndDelete({ _id: id });
+
+                if (!userToDelete) {
+                    res.status(404).send({ status: 'ERR', data: 'No existe usuario con ese ID' })
+                } else {
+                    res.status(200).send({ status: 'OK', data: userToDelete })
+                }
+            } else {
+                res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
+            }
         } catch (err) {
             res.status(500).send({ status: 'ERR', data: err.message })
         }
