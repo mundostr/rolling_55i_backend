@@ -48,10 +48,10 @@ export const giftcardsRoutes = ()  => {
         res.status(200).send({ status: 'OK', data: cards })
     })
 
-    router.get('/one/:uid', async (req, res) => {
+    router.get('/one/:cid', async (req, res) => {
         try {
-            if (mongoose.Types.ObjectId.isValid(req.params.uid)) {
-                const card = await cardModel.findById(req.params.uid)
+            if (mongoose.Types.ObjectId.isValid(req.params.cid)) {
+                const card = await cardModel.findById(req.params.cid)
 
                 if (card === null) {
                     res.status(404).send({ status: 'ERR', data: 'No existe tarjeta con ese ID' })
@@ -83,9 +83,9 @@ export const giftcardsRoutes = ()  => {
         }
     })
 
-    router.put('/:uid', filterAllowed(['title', 'price', 'image']), async (req, res) => {
+    router.put('/:cid', filterAllowed(['title', 'price', 'image']), async (req, res) => {
         try {
-            const id = req.params.uid
+            const id = req.params.cid
             if (mongoose.Types.ObjectId.isValid(id)) {
                 const cardToModify = await cardModel.findOneAndUpdate({ _id: id }, { $set: req.body }, { new: true })
 
@@ -102,9 +102,9 @@ export const giftcardsRoutes = ()  => {
         }
     })
 
-    router.delete('/:uid', async (req, res) => {
+    router.delete('/:cid', async (req, res) => {
         try {
-            const id = req.params.uid
+            const id = req.params.cid
             if (mongoose.Types.ObjectId.isValid(id)) {
                 const cardToDelete = await cardModel.findOneAndDelete({ _id: id });
 

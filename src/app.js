@@ -43,6 +43,7 @@ app.use('/api/users', usersRoutes());
 // Habilitamos una ruta "catchall" para retornar un contenido amigable cuando se intenta
 // acceder a un endpoint que no existe
 app.all('*', (req, res) => {
+    console.log(req.url)
     res.status(404).send({ status: 'ERR', data: 'No se encuentra el endpoint solicitado' })
 })
 
