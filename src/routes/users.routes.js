@@ -27,6 +27,18 @@ export const usersRoutes = ()  => {
         }
     }
 
+    const checkAllowed = (allowedFields) => {
+        return (req, res, next) => {
+            req.filteredBody = {};
+            
+            for (const key in req.body) {
+                if (allowedFields.includes(key)) req.filteredBody[key] = req.body[key]
+            }
+            
+            next()
+        }
+    }
+
     const checkRegistered = async (req, res, next) => {
         const userAlreadyRegistered = await userModel.findOne({ email: req.body.email })
         
@@ -206,9 +218,21 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.put('/', async (req, res) => {
+    router.put('/:uid', checkAllowed(['name', 'email', 'password', 'avatar', 'role', 'cart']), async (req, res) => {
         try {
-            res.status(200).send({ status: 'OK', data: 'Quiere hacer un PUT' })
+            const id = req.params.uid
+            if (mongoose.Types.ObjectId.isValid(id)) {
+                // Busca por ID, actualiza y retorna como resultado el objeto con los nuevos datos
+                const userToModify = await userModel.findOneAndUpdate({ _id: id }, { $set: req.body }, { new: true })
+
+                if (!userToModify) {
+                    res.status(404).send({ status: 'ERR', data: 'No existe usuario con ese ID' })
+                } else {
+                    res.status(200).send({ status: 'OK', data: userToModify })
+                }
+            } else {
+                res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
+            }
         } catch (err) {
             res.status(500).send({ status: 'ERR', data: err.message })
         }
