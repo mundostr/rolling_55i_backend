@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import { Router } from 'express'
 // Ya no necesitamos el array de giftcards local, recuperamos desde la base de datos
 // import giftcards_data from '../helpers/giftcards.js'
@@ -55,7 +56,7 @@ export const giftcardsRoutes = ()  => {
                 if (card === null) {
                     res.status(404).send({ status: 'ERR', data: 'No existe tarjeta con ese ID' })
                 } else {
-                    res.status(200).send({ status: 'OK', data: user })
+                    res.status(200).send({ status: 'OK', data: card })
                 }
             } else {
                 res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
