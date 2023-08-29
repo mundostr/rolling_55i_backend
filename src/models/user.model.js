@@ -15,7 +15,12 @@ const schema = new mongoose.Schema({
     password: { type: String, required: true },
     avatar: { type: String },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    cart: { type: Array, required: true, default: [] }
+    cart: { type: Array, required: true, default: [] },
+    // En muchos casos, podemos preferir mantener los datos al momento de borrarlos.
+    // Para poder hacerlo, agregamos un campo de tipo booleano que indica el estado (activo o inactivo)
+    // del registro. Al borrar, simplemente lo marcamos como inactivo para que no sea considerado en
+    // listados y demás, pero los datos en sí seguirán estando.
+    // active: { type: Boolean, required: true, default: true }
 })
 schema.plugin(mongoosePaginate)
 

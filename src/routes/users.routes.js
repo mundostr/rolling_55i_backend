@@ -11,10 +11,13 @@ import jwt from 'jsonwebtoken'
 export const usersRoutes = ()  => {
     const router = Router()
 
-    // Middleware de control de campos para body
     // Un middleware es una función que se "inyecta" en la cadena de ejecución de Express y hace uso de req, res y next.
     // Si aparece un problema en el proceso, "corta" la ejecución de la cadena con un return y el error correspondiente;
     // si todo se procesa ok, llama a next() para que Express continúe con el próximo "eslabón"
+    
+    /**
+     * Verifica campos requeridos, el req.body debe contener sí o sí esos elementos y no estar vacíos
+     */
     const checkRequired = (requiredFields) => {
         return (req, res, next) => {
             for (const required of requiredFields) {
@@ -27,6 +30,9 @@ export const usersRoutes = ()  => {
         }
     }
 
+    /**
+     * Verifica si el email enviado en el body ya se encuentra registrado
+     */
     const checkRegistered = async (req, res, next) => {
         const userAlreadyRegistered = await userModel.findOne({ email: req.body.email })
         
@@ -37,6 +43,9 @@ export const usersRoutes = ()  => {
         }
     }
 
+    /**
+     * Verifica que el mail enviado en el body exista en la colección de usuarios
+     */
     const checkReadyLogin = async (req, res, next) => {
         // res.local es un elemento ya disponible en el objeto res de Express
         // foundUser es un elemento nuevo de res.local que agregamos de nuestro lado
@@ -53,6 +62,10 @@ export const usersRoutes = ()  => {
         }
     }
 
+    /**
+     * Verifica que el rol indicado en el objeto req.loggedInUser (generado al verificar el token)
+     * coincida con uno de los requeridos
+     */
     const checkRoles = (requiredRoles) => {
         return (req, res, next) => {
             if (!requiredRoles.includes(req.loggedInUser.role)) return res.status(403).send({ status: 'ERR', data: 'No tiene autorización para acceder a este recurso' })
@@ -61,7 +74,9 @@ export const usersRoutes = ()  => {
         }
     }
 
-    // Este middleware verifica que se envíe un token en la solicitud y sea válido
+    /**
+     * Verifica que la solicitud (req.headers.authorization) contenga un token y sea válido
+     */
     const verifyToken = (req, res, next) => {
         // Se obtiene el token desde los headers de la solicitud
         const headerToken = req.headers.authorization
@@ -85,29 +100,37 @@ export const usersRoutes = ()  => {
         })
     }
 
-    // Utilizamos la sintaxis de express-validator para controlar distintos aspectos de los elementos del body
-    // Inyectaremos este middleware en el endpoint de registro de usuario
+    /**
+     * Valida los elementos del body utilizando express-validator
+     * Este middleware se inyecta en el endpoint de creación de usuario
+     */
     const validateCreateFields = [
         body('name').isLength({ min: 2, max: 32 }).withMessage('El nombre debe tener entre 2 y 32 caracteres'),
         body('email').isEmail().withMessage('El formato de mail no es válido'),
         body('password').isLength({ min: 6, max: 12 }).withMessage('La clave debe tener entre 6 y 12 caracteres')
     ]
 
-    // Utilizamos la sintaxis de express-validator para controlar distintos aspectos de los elementos del body
-    // Inyectaremos este middleware en el endpoint de login de usuario
+    /**
+     * Valida los elementos del body utilizando express-validator
+     * Este middleware se inyecta en el endpoint de login
+     */
     const validateLoginFields = [
         body('email').isEmail().withMessage('El formato de mail no es válido'),
         body('password').isLength({ min: 6, max: 12 }).withMessage('La clave debe tener entre 6 y 12 caracteres')
     ]
 
-    // Quita campos de un objeto en base a un array de no deseados
+    /**
+     * Quita campos de un objeto en base a un array de no deseados
+     */
     const filterData = (data, unwantedFields) => {
         const { ...filteredData } = data
         unwantedFields.forEach(field => delete filteredData[field] )
         return filteredData
     }
 
-    // Quita campos del req.body en base a un array de permitidos
+    /**
+     * Quita campos del req.body en base a un array de permitidos
+     */
     const filterAllowed = (allowedFields) => {
         return (req, res, next) => {
             req.filteredBody = {};
@@ -120,8 +143,11 @@ export const usersRoutes = ()  => {
         }
     }
 
-    // Este endpoint queda solo como referencia
-    // Normalmente en una colección de usuarios, no se recupera la lista completa
+    /**
+     * Este endpoint queda solo como referencia.
+     * Es raro en una colección de usuarios (más si el número es grande), que se
+     * recupere la lista completa de una vez
+     */
     router.get('/', async (req, res) => {
         try {
             // Como se mencionó, utilizando el modelo podemos acceder a los distintos métodos,
@@ -134,7 +160,9 @@ export const usersRoutes = ()  => {
         }
     })
 
-    // Aquí incorporamos el uso de paginado, esto es más habitual al trabajar con mayor cantidad de registros
+    /**
+     * Aquí incorporamos el uso de paginado, esto es más habitual al trabajar con mayor cantidad de registros
+     */
     router.get('/paginated', async (req, res) => {
         try {
             // El método paginate() está disponible gracias al uso del módulo mongoose-paginate-v2
@@ -149,10 +177,12 @@ export const usersRoutes = ()  => {
         }
     })
 
-    // Habilitamos también una ruta para recuperar datos de un único usuario mediante su _id
-    // Express utiliza : en la url para indicar que el texto siguiente es el nombre de una variable (uid en este caso).
-    // Para usar internamente su valor, lo accedemos mediante req.params.nombre_variable (req.params.uid)
-    // Podemos utilizar más variables en la url, simplemente separándolas con barras /
+    /**
+     * Habilitamos también una ruta para recuperar datos de un único usuario mediante su _id
+     * Express utiliza : en la url para indicar que el texto siguiente es el nombre de una variable (uid en este caso).
+     * Para usar internamente su valor, lo accedemos mediante req.params.nombre_variable (req.params.uid)
+     * Podemos utilizar más variables en la url, simplemente separándolas con barras /
+     */
     router.get('/one/:uid', async (req, res) => {
         try {
             // Importante siempre verificar los datos recibidos en request
@@ -173,24 +203,28 @@ export const usersRoutes = ()  => {
         }
     })
 
-    // Esta es una ruta protegida por token
-    // El middleware verifyToken chequeará que exista un token en la solicitud y sea válido
+    /**
+     * Esta es una ruta protegida por token (verifyToken)
+     */
     router.get('/protected', verifyToken, (req, res) => {
         res.status(200).send({ status: 'OK', data: 'Se muestran los datos protegidos USER' })
     })
 
-    // Esta es una ruta protegida por token y con rol de usuario
-    // El middleware verifyToken chequeará que exista un token en la solicitud y sea válido,
-    // luego checkRoles confirmará que el rol de usuario coincida con los permitidos
+    /**
+     * Esta es una ruta protegida por token (verifyToken) y con control de roles (checkRoles)
+     * En este caso el usuario debe tener rol de admin para poder obtener los datos del endpoint
+     */
     router.get('/protected_adm', verifyToken, checkRoles(['admin']), (req, res) => {
         res.status(200).send({ status: 'OK', data: 'Se muestran los datos protegidos ADMIN' })
     })
 
-    // Observar como estamos "inyectando" los middleware definidos arriba
-    // De esta forma, al recibirse una solicitud en este endpoint, se ejecutará primero el "eslabón"
-    // checkRequired, si todo está ok se continuará con validateCreateFields y luego checkRegistered.
-    // En caso de algún problema en uno de los eslabones, la cadena se "cortará" ahí directamente,
-    // devolviéndose el error que se indique en el propio middleware
+    /**
+     * Observar como estamos "inyectando" los middleware definidos arriba
+     * De esta forma, al recibirse una solicitud en este endpoint, se ejecutará primero el "eslabón"
+     * checkRequired, si todo está ok se continuará con validateCreateFields y luego checkRegistered.
+     * En caso de algún problema en uno de los eslabones, la cadena se "cortará" ahí directamente,
+     * devolviéndose el error que se indique en el propio middleware
+     */
     router.post('/', checkRequired(['name', 'email', 'password']), validateCreateFields, checkRegistered, async (req, res) => {
         // Ante todo chequeamos el validationResult del express-validator
         if (validationResult(req).isEmpty()) {
@@ -219,6 +253,10 @@ export const usersRoutes = ()  => {
         }
     })
 
+    /**
+     * Login de usuario, verificando que el body envíe los campos email y password, validando su contenido
+     * y chequeando además que el mail indicado ya exista en la colección.
+     */
     router.post('/login', checkRequired(['email', 'password']), validateLoginFields, checkReadyLogin, async (req, res) => {
         // Ante todo chequeamos el validationResult del express-validator
         if (validationResult(req).isEmpty()) {
@@ -229,7 +267,6 @@ export const usersRoutes = ()  => {
                 if (foundUser.email === req.body.email && isValidPassword(foundUser, req.body.password)) {
                     // Generamos un nuevo token tipo JWT y lo agregamos a foundUser para que sea enviado en la respuesta
                     foundUser._doc.token = jwt.sign({
-                        userId: foundUser._id,
                         name: foundUser.name,
                         email: foundUser.email,
                         role: foundUser.role
@@ -246,12 +283,16 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.put('/:uid', filterAllowed(['name', 'email', 'password', 'avatar', 'role', 'cart']), async (req, res) => {
+    /**
+     * Modificación de usuario, verificando formato de ID y campos permitidos.
+     * Si el body contiene otros elementos, se los filtra (filterAllowed).
+     */
+    router.put('/:uid', filterAllowed(['name', 'email', 'avatar', 'role', 'cart']), async (req, res) => {
         try {
             const id = req.params.uid
             if (mongoose.Types.ObjectId.isValid(id)) {
                 // Busca por ID, actualiza y retorna como resultado el objeto con los nuevos datos
-                const userToModify = await userModel.findOneAndUpdate({ _id: id }, { $set: req.body }, { new: true })
+                const userToModify = await userModel.findOneAndUpdate({ _id: id }, { $set: req.filteredBody }, { new: true })
 
                 if (!userToModify) {
                     res.status(404).send({ status: 'ERR', data: 'No existe usuario con ese ID' })
@@ -266,7 +307,11 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.delete('/:uid', async (req, res) => {
+    /**
+     * Borrado definitivo de usuario, con verificación de formato de ID.
+     * En este caso el usuario debe tener rol de admin para que el endpoint procese el borrado.
+     */
+    router.delete('/:uid', verifyToken, checkRoles(['admin']), async (req, res) => {
         try {
             const id = req.params.uid
             if (mongoose.Types.ObjectId.isValid(id)) {
