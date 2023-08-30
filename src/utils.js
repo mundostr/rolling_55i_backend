@@ -108,7 +108,7 @@ const filterData = (data, unwantedFields) => {
 
 /**
  * 
- * Quita campos del req.body en base a un array de permitidos
+ * Quita campos del req.body respetando un array de permitidos
  * @param {*} allowedFields array de keys permitidos
  * @returns middleware
  */
