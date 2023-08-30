@@ -4,7 +4,7 @@ import { Router } from 'express'
 import userModel from '../models/user.model.js'
 
 import { body, validationResult } from 'express-validator'
-import { createHash, isValidPassword } from '../utils.js'
+import { createHash, isValidPassword, checkRequired, checkRoles, verifyToken, filterData, filterAllowed } from '../utils.js'
 import jwt from 'jsonwebtoken'
 
 // Exportamos usersRoutes habilitando endpoints para las distintas operaciones deseadas
@@ -14,21 +14,6 @@ export const usersRoutes = ()  => {
     // Un middleware es una función que se "inyecta" en la cadena de ejecución de Express y hace uso de req, res y next.
     // Si aparece un problema en el proceso, "corta" la ejecución de la cadena con un return y el error correspondiente;
     // si todo se procesa ok, llama a next() para que Express continúe con el próximo "eslabón"
-    
-    /**
-     * Verifica campos requeridos, el req.body debe contener sí o sí esos elementos y no estar vacíos
-     */
-    const checkRequired = (requiredFields) => {
-        return (req, res, next) => {
-            for (const required of requiredFields) {
-                if (!req.body.hasOwnProperty(required) || req.body[required].trim() === '') {
-                    return res.status(400).send({ status: 'ERR', data: 'Faltan campos obligatorios' })
-                }
-            }
-            
-            next()
-        }
-    }
 
     /**
      * Verifica si el email enviado en el body ya se encuentra registrado
@@ -63,44 +48,6 @@ export const usersRoutes = ()  => {
     }
 
     /**
-     * Verifica que el rol indicado en el objeto req.loggedInUser (generado al verificar el token)
-     * coincida con uno de los requeridos
-     */
-    const checkRoles = (requiredRoles) => {
-        return (req, res, next) => {
-            if (!requiredRoles.includes(req.loggedInUser.role)) return res.status(403).send({ status: 'ERR', data: 'No tiene autorización para acceder a este recurso' })
-            
-            next()
-        }
-    }
-
-    /**
-     * Verifica que la solicitud (req.headers.authorization) contenga un token y sea válido
-     */
-    const verifyToken = (req, res, next) => {
-        // Se obtiene el token desde los headers de la solicitud
-        const headerToken = req.headers.authorization
-
-        // Si no hay token se devuelve directamente un error 401
-        if (!headerToken) return res.status(401).send({ status: 'ERR', data: 'Se requiere un token válido' })
-        const token = headerToken.replace('Bearer ', '')
-
-        jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
-            if (err) {
-                if (err.name === 'TokenExpiredError') {
-                    return res.status(401).send({ status: 'ERR', data: 'El token ha expirado' })
-                } else {
-                    return res.status(401).send({ status: 'ERR', data: 'El token no es válido' })
-                }
-            }
-            
-            // En caso de llegar acá, significa que el token es válido y todo está ok, se sigue la cadena
-            req.loggedInUser = decoded
-            next()
-        })
-    }
-
-    /**
      * Valida los elementos del body utilizando express-validator
      * Este middleware se inyecta en el endpoint de creación de usuario
      */
@@ -118,30 +65,6 @@ export const usersRoutes = ()  => {
         body('email').isEmail().withMessage('El formato de mail no es válido'),
         body('password').isLength({ min: 6, max: 12 }).withMessage('La clave debe tener entre 6 y 12 caracteres')
     ]
-
-    /**
-     * Quita campos de un objeto en base a un array de no deseados
-     */
-    const filterData = (data, unwantedFields) => {
-        const { ...filteredData } = data
-        unwantedFields.forEach(field => delete filteredData[field] )
-        return filteredData
-    }
-
-    /**
-     * Quita campos del req.body en base a un array de permitidos
-     */
-    const filterAllowed = (allowedFields) => {
-        return (req, res, next) => {
-            req.filteredBody = {};
-            
-            for (const key in req.body) {
-                if (allowedFields.includes(key)) req.filteredBody[key] = req.body[key]
-            }
-            
-            next()
-        }
-    }
 
     /**
      * Este endpoint queda solo como referencia.
@@ -225,7 +148,7 @@ export const usersRoutes = ()  => {
      * En caso de algún problema en uno de los eslabones, la cadena se "cortará" ahí directamente,
      * devolviéndose el error que se indique en el propio middleware
      */
-    router.post('/', verifyToken, checkRoles(['admin']), checkRequired(['name', 'email', 'password']), validateCreateFields, checkRegistered, async (req, res) => {
+    router.post('/', checkRequired(['name', 'email', 'password']), validateCreateFields, checkRegistered, async (req, res) => {
         // Ante todo chequeamos el validationResult del express-validator
         if (validationResult(req).isEmpty()) {
             try {
