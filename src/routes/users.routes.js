@@ -225,7 +225,7 @@ export const usersRoutes = ()  => {
      * En caso de algún problema en uno de los eslabones, la cadena se "cortará" ahí directamente,
      * devolviéndose el error que se indique en el propio middleware
      */
-    router.post('/', checkRequired(['name', 'email', 'password']), validateCreateFields, checkRegistered, async (req, res) => {
+    router.post('/', verifyToken, checkRoles(['admin']), checkRequired(['name', 'email', 'password']), validateCreateFields, checkRegistered, async (req, res) => {
         // Ante todo chequeamos el validationResult del express-validator
         if (validationResult(req).isEmpty()) {
             try {
@@ -287,7 +287,7 @@ export const usersRoutes = ()  => {
      * Modificación de usuario, verificando formato de ID y campos permitidos.
      * Si el body contiene otros elementos, se los filtra (filterAllowed).
      */
-    router.put('/:uid', filterAllowed(['name', 'email', 'avatar', 'role', 'cart']), async (req, res) => {
+    router.put('/:uid', verifyToken, checkRoles(['admin']), filterAllowed(['name', 'email', 'avatar', 'role', 'cart']), async (req, res) => {
         try {
             const id = req.params.uid
             if (mongoose.Types.ObjectId.isValid(id)) {
