@@ -6,40 +6,17 @@ import { Router } from 'express'
 import cardModel from '../models/giftcard.model.js'
 
 import { body, validationResult } from 'express-validator'
+import { checkRequired, checkRoles, verifyToken, filterData, filterAllowed } from '../utils.js'
 
 // Es muy común utilizar distintos archivos de rutas para organizar los endpoints,
 // luego agregaremos el uso de clases.
 export const giftcardsRoutes = ()  => {
     const router = Router()
 
-    const checkRequired = (requiredFields) => {
-        return (req, res, next) => {
-            for (const required of requiredFields) {
-                if (!req.body.hasOwnProperty(required) || req.body[required].trim() === '') {
-                    return res.status(400).send({ status: 'ERR', data: 'Faltan campos obligatorios' })
-                }
-            }
-            
-            next()
-        }
-    }
-
     const validateCreateFields = [
         body('title').isLength({ min: 2, max: 32 }).withMessage('El título debe tener entre 2 y 32 caracteres'),
         body('price').isNumeric().withMessage('El precio debe ser numérico')
     ]
-
-    const filterAllowed = (allowedFields) => {
-        return (req, res, next) => {
-            req.filteredBody = {};
-            
-            for (const key in req.body) {
-                if (allowedFields.includes(key)) req.filteredBody[key] = req.body[key]
-            }
-            
-            next()
-        }
-    }
 
     // ES MUY IMPORTANTE recordar siempre el uso de promesas, sea con then catch o async await
     // al consultar bases de datos o manejar archivos
@@ -74,7 +51,7 @@ export const giftcardsRoutes = ()  => {
 
                 const process = await cardModel.create(newCard)
                 
-                res.status(200).send({ status: 'OK', data: process })
+                res.status(200).send({ status: 'OK', data: filterData(process, ['password']) })
             } catch (err) {
                 res.status(500).send({ status: 'ERR', data: err.message })
             }
@@ -83,7 +60,7 @@ export const giftcardsRoutes = ()  => {
         }
     })
 
-    router.put('/:cid', filterAllowed(['title', 'price', 'image']), async (req, res) => {
+    router.put('/:cid', verifyToken, checkRoles(['admin']), filterAllowed(['title', 'price', 'image']), async (req, res) => {
         try {
             const id = req.params.cid
             if (mongoose.Types.ObjectId.isValid(id)) {
@@ -92,7 +69,7 @@ export const giftcardsRoutes = ()  => {
                 if (!cardToModify) {
                     res.status(404).send({ status: 'ERR', data: 'No existe tarjeta con ese ID' })
                 } else {
-                    res.status(200).send({ status: 'OK', data: cardToModify })
+                    res.status(200).send({ status: 'OK', data: filterData(cardToModify, ['password']) })
                 }
             } else {
                 res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
@@ -102,7 +79,7 @@ export const giftcardsRoutes = ()  => {
         }
     })
 
-    router.delete('/:cid', async (req, res) => {
+    router.delete('/:cid', verifyToken, checkRoles(['admin']), async (req, res) => {
         try {
             const id = req.params.cid
             if (mongoose.Types.ObjectId.isValid(id)) {

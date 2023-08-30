@@ -167,7 +167,7 @@ export const usersRoutes = ()  => {
                 // Una vez organizado el nuevo usuario, invocamos el método create() para enviarlo a la base de datos
                 const process = await userModel.create(newUser)
                 
-                res.status(200).send({ status: 'OK', data: process })
+                res.status(200).send({ status: 'OK', data: filterData(process, ['password']) })
             } catch (err) {
                 res.status(500).send({ status: 'ERR', data: err.message })
             }
@@ -220,7 +220,7 @@ export const usersRoutes = ()  => {
                 if (!userToModify) {
                     res.status(404).send({ status: 'ERR', data: 'No existe usuario con ese ID' })
                 } else {
-                    res.status(200).send({ status: 'OK', data: userToModify })
+                    res.status(200).send({ status: 'OK', data: filterData(userToModify, ['password']) })
                 }
             } else {
                 res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
