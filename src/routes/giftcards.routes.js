@@ -43,7 +43,7 @@ export const giftcardsRoutes = ()  => {
         }
     })
 
-    router.post('/', checkRequired(['title', 'price']), validateCreateFields, async (req, res) => {
+    router.post('/', verifyToken, checkRoles(['admin']), checkRequired(['title', 'price']), validateCreateFields, async (req, res) => {
         if (validationResult(req).isEmpty()) {
             try {
                 const { title, price, image } = req.body
