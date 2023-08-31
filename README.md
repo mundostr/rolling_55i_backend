@@ -1,6 +1,6 @@
 <p align="left"><a href="https://rollingcodeschool.com/" target="blank"><img src="https://github.com/mundostr/rolling_55i_backend/raw/master/fullstack-portada.png" width="75%" alt="RollingCode" /></a></p>
 
-# ROLLINGCODE SCHOOL
+# ROLLINGCODE SCHOOL ACADEMY
 ## Comisión 55i Fullstack 2023
 ### Repo proyecto backend general Express API Rest para pruebas en clase
 
