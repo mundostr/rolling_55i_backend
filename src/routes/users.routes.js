@@ -194,7 +194,7 @@ export const usersRoutes = ()  => {
                         email: foundUser.email,
                         role: foundUser.role
                     }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRATION });
-                    res.status(200).send({ status: 'OK', data: filterData(foundUser._doc, ['_id', 'password']) })
+                    res.status(200).send({ status: 'OK', data: filterData(foundUser._doc, ['password']) })
                 } else {
                     res.status(401).send({ status: 'ERR', data: 'Credenciales no válidas' })
                 }
