@@ -230,6 +230,25 @@ export const usersRoutes = ()  => {
         }
     })
 
+    router.put('/cart/:uid', verifyToken, filterAllowed(['cart']), async (req, res) => {
+        try {
+            const id = req.params.uid
+            if (mongoose.Types.ObjectId.isValid(id)) {
+                const userToModify = await userModel.findOneAndUpdate({ _id: id }, { $set: req.filteredBody }, { new: true })
+
+                if (!userToModify) {
+                    res.status(404).send({ status: 'ERR', data: 'No existe usuario con ese ID' })
+                } else {
+                    res.status(200).send({ status: 'OK', data: filterData(userToModify, ['password']) })
+                }
+            } else {
+                res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
+            }
+        } catch (err) {
+            res.status(500).send({ status: 'ERR', data: err.message })
+        }
+    })
+
     /**
      * Borrado definitivo de usuario, con verificación de formato de ID.
      * En este caso el usuario debe tener rol de admin para que el endpoint procese el borrado.
