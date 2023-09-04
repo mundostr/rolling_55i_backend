@@ -14,6 +14,7 @@ import { usersRoutes } from './routes/users.routes.js'
 dotenv.config()
 
 // Inicializamos constantes con los valores de variables de entorno
+const EXPRESS_URL = process.env.EXPRESS_URL || '127.0.0.1'
 const EXPRESS_PORT = process.env.EXPRESS_PORT || 3000
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
 
@@ -47,7 +48,7 @@ app.all('*', (req, res) => {
 })
 
 // Finalmente ponemos a "escuchar" nuestro servidor en un puerto específico
-app.listen(EXPRESS_PORT, async () => {
+app.listen(`${EXPRESS_URL}:${EXPRESS_PORT}`, async () => {
     try {
         // Conectamos al motor de base de datos MongoDB
         await mongoose.connect(MONGODB_URI)
