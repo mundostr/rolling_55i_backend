@@ -41,7 +41,6 @@ $ npm i nodemon --save-dev
 
 ### Ejemplo variables de entorno (archivo .env en raíz del proyecto)
 ```bash
-EXPRESS_URL=0.0.0.0
 EXPRESS_PORT=5000
 MONGODB_URI=mongodb://localhost:27017/rolling55i
 MONGODB_URI_REMOTA=mongodb+srv://<usuario>:<clave>@cluster0.4qaobt3.mongodb.net/rolling55i
