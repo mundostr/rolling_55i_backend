@@ -36,7 +36,7 @@ const checkRequired = (requiredFields) => {
     return (req, res, next) => {
         for (const required of requiredFields) {
             if (!req.body.hasOwnProperty(required) || req.body[required].trim() === '') {
-                return res.status(400).send({ status: 'ERR', data: 'Faltan campos obligatorios' })
+                return res.status(400).send({ status: 'ERR', data: `Faltan campos obligatorios (${requiredFields.join(',')})` })
             }
         }
         
