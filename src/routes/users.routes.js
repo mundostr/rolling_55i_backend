@@ -190,6 +190,7 @@ export const usersRoutes = ()  => {
                 if (foundUser.email === req.body.email && isValidPassword(foundUser, req.body.password)) {
                     // Generamos un nuevo token tipo JWT y lo agregamos a foundUser para que sea enviado en la respuesta
                     foundUser._doc.token = jwt.sign({
+                        uid: foundUser._id,
                         name: foundUser.name,
                         email: foundUser.email,
                         role: foundUser.role
@@ -230,20 +231,15 @@ export const usersRoutes = ()  => {
         }
     })
 
-    router.put('/cart/:uid', verifyToken, filterAllowed(['cart']), async (req, res) => {
+    /**
+     * Actualiza el carrito del usuario autenticado
+     * Directamente se utiliza el _id guardado en el payload del token, para evitar que se pueda modificar
+     * el carrito de otro usuario.
+     */
+    router.put('/cart/add', verifyToken, filterAllowed(['cart']), async (req, res) => {
         try {
-            const id = req.params.uid
-            if (mongoose.Types.ObjectId.isValid(id)) {
-                const userToModify = await userModel.findOneAndUpdate({ _id: id }, { $set: req.filteredBody }, { new: true })
-
-                if (!userToModify) {
-                    res.status(404).send({ status: 'ERR', data: 'No existe usuario con ese ID' })
-                } else {
-                    res.status(200).send({ status: 'OK', data: filterData(userToModify, ['password']) })
-                }
-            } else {
-                res.status(400).send({ status: 'ERR', data: 'Formato de ID no válido' })
-            }
+            const userToModify = await userModel.findOneAndUpdate({ _id: req.loggedInUser.uid }, { $set: req.filteredBody }, { new: true })
+            res.status(200).send({ status: 'OK', data: filterData(userToModify, ['password']) })
         } catch (err) {
             res.status(500).send({ status: 'ERR', data: err.message })
         }
