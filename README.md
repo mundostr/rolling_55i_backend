@@ -25,6 +25,7 @@
 - Borrado de usuario (validación de ID)
 - Endpoint protegido USER (requiere token)
 - Endpoint protegido ADMIN (requiere token y rol admin)
+- Movimiento de productos en carrito de usuario
 
 #### Tarjetas (gitfcards):
 - Listado completo
@@ -53,6 +54,15 @@ TOKEN_EXPIRATION=1h
 ```bash
 $ npm run dev
 ```
+
+
+### Deploy para producción
+- Railway: [Railway.app](https://railway.app/)
+- IMPORTANTE para Railway!: agregar las variables de entorno necesarias, incluyendo PORT con el número de puerto a utilizar, caso contrario el deploy se realizará pero la app no será accesible a través del dominio habilitado.
+- Si se desea utilizar una versión de NodeJS específica, agregar en el directorio raíz de la aplicación un archivo .nvmrc con la versión dentro (20.4.0 por ejemplo), Railway iniciará el servicio respetando esa versión.
+
+- Render: [Render.com](https://render.com/)
+- IMPORTANTE para Render!: agregar en la configuración npm i (build command) y node src/app.js o el nombre de app que se haya elegido (start command). Colocar también las variables de entorno necesarias, en este caso no se requiere PORT, y la versión de node se puede manejar mediante la variable NODE_VERSION en lugar del archivo .nvmrc.
 
 
 ### Pruebas de endpoints
